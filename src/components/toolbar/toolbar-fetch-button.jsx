@@ -5,15 +5,23 @@ import ToolbarButton from './toolbar-button';
 
 export default function ToolbarFetchButton({ state }, { translator, projectActions }) {
 
-
   let fetchAndLoadProject = () => {
-    fetch('http://localhost:4000/get-project-data')
-      .then(response => response.json())
+    // Use fetch to get project data from the server
+    fetch('http://localhost:4000/process-projects')
+      .then(response => {
+        // Check if the fetch request was successful
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json(); // Parse JSON response body
+      })
       .then(data => {
         // Assuming 'data' contains the generated project data
-        projectActions.loadProject(data);
+        // and matches the structure expected by loadProject
+        // projectActions.loadProject(data);
       })
       .catch(error => {
+        // Log or handle errors in fetching or processing the data
         console.error('Error fetching and loading project:', error);
       });
   };
