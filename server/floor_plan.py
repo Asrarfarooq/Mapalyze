@@ -8,6 +8,7 @@ from selenium.webdriver import Firefox, FirefoxOptions
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
+import glob
 
 # Get the current directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -114,6 +115,11 @@ reduction(output_path)
 
 line_segments = detect_line_segments(output_path)
 
+# Set a fixed file name for the JSON output
+output_json_filename = "output.json"
+
+
+
 list_of_xcor = []
 list_of_ycor = []
 
@@ -205,7 +211,60 @@ def saveProject():
     ## Accept the alert pop-up
     driver.switch_to.alert.accept()
 
+def wait_for_download_and_rename(downloads_dir, new_filename, timeout=30):
+    # Wait for the download to finish within the timeout period
+    start_time = time.time()
+    while True:
+        time.sleep(1)  # Polling interval
+        files = [f for f in os.listdir(downloads_dir) if f.endswith('.png')]
+        if files:
+            # Assuming the most recent file is the downloaded file
+            latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(downloads_dir, f)))
+            full_path_latest_file = os.path.join(downloads_dir, latest_file)
+            full_path_new_file = os.path.join(downloads_dir, new_filename)
+            os.rename(full_path_latest_file, full_path_new_file)
+            print(f"Renamed downloaded file to {new_filename}")
+            break
+        elif time.time() - start_time > timeout:
+            print("Download did not complete within the timeout period.")
+            break
+
+# Call the saveProject function to initiate the download
 saveProject()
-time.sleep(1)
-print("clicked")
+
+# Add a delay to ensure the file has time to download.
+# This is a simple approach; for more reliability, you could check for the file's existence in a loop.
+time.sleep(2)  # Wait 2 seconds for the download to complete. Adjust the time as necessary.
+
+# The directory where files are downloaded. This should match the 'downloads_dir' from the Firefox options
+downloads_dir = os.path.join(current_dir, "jsons")
+
+# The pattern to match the downloaded files, you might need to adjust this based on the actual downloaded files
+downloaded_files_pattern = os.path.join(downloads_dir, '*.json')
+
+# Wait for the download to finish and get the list of downloaded files
+downloaded_files = glob.glob(downloaded_files_pattern)
+while not downloaded_files:
+    time.sleep(1)  # Wait and check again
+    downloaded_files = glob.glob(downloaded_files_pattern)
+
+# If there are multiple files and you only want the latest, you can sort by creation time
+downloaded_files.sort(key=os.path.getctime, reverse=True)
+
+# If there are multiple files, the first one is the most recent
+if downloaded_files:
+    latest_file_path = downloaded_files[0]
+
+    # The new fixed filename you want to use
+    fixed_filename = 'default_filename.json'
+    fixed_file_path = os.path.join(downloads_dir, fixed_filename)
+
+    # If a file with the fixed filename already exists, remove it
+    if os.path.exists(fixed_file_path):
+        os.remove(fixed_file_path)
+
+    # Rename the latest downloaded file to the fixed filename
+    os.rename(latest_file_path, fixed_file_path)
+
+# Now, you can quit the browser as the download and renaming are complete
 driver.quit()

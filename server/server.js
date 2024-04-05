@@ -5,6 +5,8 @@ const fs = require("fs");
 const path = require("path");
 const port = 4000;
 const { exec } = require("child_process");
+const { promisify } = require("util");
+const execAsync = promisify(exec);
 
 // Initialize express app
 const app = express();
@@ -12,7 +14,7 @@ const app = express();
 // Enable CORS with predefined options
 app.use(
   cors({
-    origin: ["http://localhost:9000", "http://localhost:44463"], // Frontend domains
+    origin: "*", // Frontend domains
     optionsSuccessStatus: 200,
   })
 );
@@ -67,21 +69,36 @@ app.post("/upload-png", (req, res) => {
             filename: req.file.filename,
             path: req.file.path,
           },
-        }); 
+        });
       }
     }
   });
 });
 
-// Route to execute a Python script and return its output
-app.get("/process-projects", (req, res) => {
-  exec("python floor_plan.py", (error, stdout, stderr) => {
-    if (error) {
-      console.error(`exec error: ${error}`);
-      return res.status(500).send("Failed to execute Python script.");
+app.get("/process-projects", async (req, res) => {
+  try {
+    // Run the Python script and wait for it to finish
+    await execAsync("python floor_plan.py", { cwd: __dirname });
+
+    // Define the path to the output JSON file
+    const outputJsonPath = path.join(
+      __dirname,
+      "jsons",
+      "default_filename.json"
+    );
+
+    // Check if the output JSON file exists
+    if (fs.existsSync(outputJsonPath)) {
+      // Send the JSON file to the client
+      res.sendFile(outputJsonPath);
+    } else {
+      // If the file does not exist, send an error message
+      res.status(404).send("Output JSON file not found.");
     }
-    res.send(stdout);
-  });
+  } catch (error) {
+    console.error(`Execution error: ${error}`);
+    res.status(500).send(`Failed to execute Python script: ${error}`);
+  }
 });
 
 // Start the server on the specified port
