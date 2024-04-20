@@ -18,7 +18,7 @@ export default function ToolbarFetchButton({ state }, { translator, projectActio
       .then(data => {
         // Assuming 'data' contains the generated project data
         // and matches the structure expected by loadProject
-        // projectActions.loadProject(data);
+        projectActions.loadProject(data);
       })
       .catch(error => {
         // Log or handle errors in fetching or processing the data
